@@ -23,21 +23,27 @@ type ('nonterminal, 'terminal) symbol =
 (*returns a list of tuple containing all (prefix, suffix) pairs*)
 let rec get_pre_suf frag head = 
 	match frag with
-	| [] -> [(head, [])]
+	| [] -> []
 	| h::t -> (head@[h], t)::(get_pre_suf t (head@[h]))
+let rec match_prefix pre rule rules derivation =
+        match rule with
+        | [] -> if pre=[] then None
+        | sym::sym_r -> match pre with
+                | [] -> derivation
+                | (T tval)::rhs -> if tval=sym then (match_prefix rhs sym_r rules derivation@[lhs, T'h]) 
+                                   else None
+                | (N nval)::rhs ->  match_nt_rules (nval (rules nval))  
 
-let rec match_pre_rule pre rule rules=
-	match rule with 
-	| [] -> if pre=[] then None
-	| h::t -> match pre with
-		| [] -> None
-		| (T tval)::rhs -> if tval=h then (match_pre_rule rhs t rules) else None 
-		| (N nval)::rhs -> (matcher nval (rules nval) rules 
+let rec match_nt_rules nt rule_list = match rule_list with
+        | [] -> None
+        | (rule::rule_lst) -> match (match_prefix nt rule rules derivation@[(nt, rule)]) with
+                              None -> None
+                              Some v -> v
 
 let parse_prefix gram acceptor frag =
-	let tuple_lst = get_pre_suf frag [] in
-	match tuple_lst with
-	| []-> []
-	| (pre, suf)::t -> if(match_pre_rule pre (snd gram)pre (snd gram)) then
-				let derivation_pre = derive_pre prefix rules in
-				acceptor rules suf
+        let tuple_lst = get_pre_suf frag [] in
+        let start = fst gram in
+        let rule_func = snd gram in
+        match tuple_lst with
+        | []-> []
+        | (pre, suf)::t -> if(match_prefix start (rule_func start) rule_func [] ) then 
