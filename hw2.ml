@@ -15,44 +15,41 @@ type ('nonterminal, 'terminal) symbol =
   | N of 'nonterminal
   | T of 'terminal
 
-(* An acceptor accepts a fragment and returns whether that fragment is 
-*  1. Need to figure out a way to return prefixes given a fragment
-*
-*)
-
 (*returns a list of tuple containing all (prefix, suffix) pairs*)
 let rec get_pre_suf frag head = 
 	match frag with
 	| [] -> []
 	| h::t -> (head@[h], t)::(get_pre_suf t (head@[h]))
 
+let is_terminal sym =
+	match sym with
+	| T _ -> true
+	| _ -> false
+
 (*given a rule and a prefix we check whether it matches*)
-let rec match_prefix pre rule rule_func derivation =
-        match rule with
-	| [] -> Some(derivation)
-	| _ -> match pre with
+let rec match_frag frag rule rule_func derivation acceptor=
+        if rule = [] then Some derivation
+	else
+	match frag with
 		| [] -> None
 		| h::t -> match rule with
 			| [] -> None
-			| (N nval)::sym_r -> (match_nt_rules nval (rule_func nval) rule_func derivation) 
-			| (T tval)::sym_r -> if tval=h then (match_prefix t sym_r rule_func derivation) 
-and match_nt_rules nt rule_list rule_func derivation =
-	match rule_list with
-        | [] -> None
-        | (rule::rule_lst) -> match (match_prefix nt rule rules derivation@[(nt, rule_list)]) with
+			| (N nval)::sym_r -> (match_nt_rules nval (rule_func nval) rule_func derivation acceptor t) 
+			| (T tval)::sym_r -> if tval=h then (match_frag t sym_r rule_func derivation acceptor) 
+					     else None (*Invalid Terminal*)
+
+and match_nt_rules nt rule_list rule_func derivation acceptor frag = match rule_list with
+        | [] -> None (*Could not find non-terminal in grammar*)
+        | rule::rule_lst -> match (match_frag frag rule rule_func (derivation@[(nt, rule_list)]) acceptor) with
 			      (*Dead End: Try next rule if match_prefix returns None*)
-                              | None -> match_nt_rules nt rule_lst rule_func derivation
-			      (*Only returns when match_prefix returns a derivation*) 
+                              | None -> match_nt_rules nt rule_lst rule_func derivation acceptor frag
+			      (*Only returns when match_prefix returns a legit derivation*) 
                               | Some v -> Some v
 
+
 let parse_prefix gram acceptor frag =
-        let tuple_lst = get_pre_suf frag [] in
-        let start = fst gram in
-        let rule_func = snd gram in
-        match tuple_lst with
-        | []-> []
-        | (pre, suf)::t -> match (match_nt_rules start (rule_func start) rule_func []) with
-			| None ->  None
-			| Some v -> let derivation = Some (v) in
-			(accept derivation suf)
-			
+        let start = fst gram and
+        rule_func = snd gram in
+	
+	match_nt_rules start (rule_func start) rule_func [] acceptor frag
+		
