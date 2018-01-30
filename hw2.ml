@@ -26,23 +26,24 @@ let rec get_pre_suf frag head =
 	| [] -> []
 	| h::t -> (head@[h], t)::(get_pre_suf t (head@[h]))
 
-(*given a rule and *)
+(*given a rule and a prefix we check whether it matches*)
 let rec match_prefix pre rule rules derivation =
-        match rule with
-        | [] -> if pre=[] then None
-	| (N nval)::sym_r -> match pre with
-			     | [] -> None
-			     | h::t -> match_nt_rules nt (rules nt) derivation 
-        | (T tval)::sym_r -> match pre with
-                	     | [] -> None
-                	     | h::t-> if tval=sym then (match_prefix rhs sym_r rules derivation) 
-                                   else None
+        if rule = [] then derivation
+	match pre with
+	| [] -> None
+	| h::t -> match rule with
+		| [] -> None
+		| (N nval)::sym_r -> match_nt_rules nval (rules nval) rule_func derivation 
+		| (T tval)::sym_r -> if tval=h then match_prefix t sym_r rules derivation 
 
-let rec match_nt_rules nt rule_list derivation= match rule_list with
+(*Try first rule in rule_list*)
+let rec match_nt_rules nt rule_list rule_func derivation= match rule_list with
         | [] -> None
-        | (rule::rule_lst) -> match (match_prefix nt rule rules derivation@[(nt, rule)]) with
-                              None -> None
-                              Some v -> v
+        | (rule::rule_lst) -> match (match_prefix nt rule rules derivation@[(nt, rule_list)]) with
+			      (*Dead End: Try next rule if match_prefix returns None*)
+                              | None -> match_nt_rules nt rule_lst rule_func derivation
+			      (*Only returns when match_prefix returns a derivation*) 
+                              | Some v -> v
 
 let parse_prefix gram acceptor frag =
         let tuple_lst = get_pre_suf frag [] in
@@ -50,4 +51,8 @@ let parse_prefix gram acceptor frag =
         let rule_func = snd gram in
         match tuple_lst with
         | []-> []
-        | (pre, suf)::t -> if(match_prefix start (rule_func start) rule_func [] ) then 
+        | (pre, suf)::t -> match match_nt_rules start (rule_func start) rule_func [] =
+			| None ->  let derivation = None
+			| Some v -> let derivation = Some (v)
+			(accept derivation suf)
+			
