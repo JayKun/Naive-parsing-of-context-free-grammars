@@ -1,0 +1,57 @@
+
+Final Approach
+==============
+My approach to the parse_prefix function involved double recursing
+two functions, namely, the match_nt_rule function
+and the match_frag function. 
+The parse_prefix function would be the main function
+that utilzies match_nt_rule to return a matcher. 
+
+(a) match_nt_rule
+    This function takes in a strating non terminal, the set of rules,
+    the matching rule list, the acceptor, the running derivation
+    and the fragment. The function then proceeds to compare
+    every single rule in the rule list with the fragment by 
+    calling match_frag and appending a tuple (non-terminal, rule)
+    to the running derivation and passing it in.
+    There are two possible outcomes when calling match_frag.
+    If match_frag returns a None then we know that we could not find a match
+    and we recursively call the this function but by passing in
+    the remainder of the rule list.
+    If match_frag returs some result, we would return it.
+(b) match_frag
+    This function takes in the set of grammar rules, one rule, the acceptor,
+    running derivation and the fragment. 
+    The main task of this function is to compare one by one
+    the elements in the rule with the fragment. 
+    If the current element in the rule is a terminating symbol,
+    we check whether that corresponds to the same
+    terminating symbol in the fragment. 
+    If it thus we recursively call the match_frag function but this time, we
+    pass in the remaining fragment as well as the remaining rule symbols.
+    If we encounter a non-terminal in the rule, 
+    we call match_nt_rule with the non terminal symbol being passed in.
+    The terminating case for this function
+    would be when our rule is an empty list. 
+    When this happens, we pass in the derivation and the remaining fragment (suffix)
+    into the acceptor. 
+    The acceptor returns accordingly and propogates the result 
+    to the calling match_nt_rule which then
+    in turn return the result from the acceptor function.
+
+Failed Approaches
+==================
+My initial approach was to generate a list of tuples containing all possible 
+prefixes and suffixes. 
+I then have a function that matches every possible prefix and if there is a match,
+I pass in the corresponding suffix into the acceptor. This approach
+failed and only works for a fragment of length 1.
+Since this appraoch generates a list of tuples, the run time was bad and 
+this approach does not make use of currying which is one of the requirements in the spec.
+
+Another noteworthy bug, was that when passed in ["9"]. My initial approach returned 
+Some([[N Term; N Binop; N Expr]; [N Term]; [N Num]; [T"9"]], []).
+This should not be the case as the first element in the derivation
+does not match the fragment.
+This approach goes deep into the rule list to a terminal but
+fails to verify the correctness of the remaining rule elements.  
